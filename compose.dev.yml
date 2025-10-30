@@ -3,6 +3,10 @@ services:
     command: ["fastapi", "dev", "--host", "0.0.0.0", "src/tw/main.py"]
     environment:
       FASTAPI_ENV: development
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
     develop:
       watch:
         - action: sync
@@ -16,6 +20,48 @@ services:
             - .git/
         - action: rebuild
           path: ./uv.lock
+
+  worker:
+    command:
+      [
+        "watchmedo",
+        "auto-restart",
+        "--directory=./",
+        "--pattern=*.py",
+        "--recursive",
+        "--",
+        "celery",
+        "--app=tw.celery_app",
+        "worker",
+        "--concurrency=1",
+        "--loglevel=INFO",
+      ]
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - .venv/
+            - frontend/node_modules/
+            - frontend/.next/
+            - frontend/
+            - .git/
+        - action: rebuild
+          path: ./uv.lock
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
 
   frontend:
     build:

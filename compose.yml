@@ -14,7 +14,24 @@ services:
     environment:
       DATABASE_URL: postgresql://tw:tw@postgres:5432/tw
       FASTAPI_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
     command: ["fastapi", "run", "--host", "0.0.0.0", "src/tw/main.py"]
+
+  worker:
+    build: .
+    depends_on:
+      - web
+      - redis
+    environment:
+      DATABASE_URL: postgresql://tw:tw@postgres:5432/tw
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    command: ["celery", "-A", "tw.celery_app", "worker", "--loglevel=info"]
 
   frontend:
     build:
@@ -42,6 +59,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
 
 volumes:
   pgdata:

@@ -18,11 +18,11 @@ type StockPayload = {
 export default function TickersPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [ticker, setTicker] = useState("");
-  const [name, setName] = useState("");
-  const [exchange, setExchange] = useState("");
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [triggering, setTriggering] = useState<number | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   const loadStocks = useCallback(async () => {
     setLoading(true);
@@ -58,24 +58,11 @@ export default function TickersPage() {
 
       setPending(true);
       setError(null);
-
-      const payload: StockPayload = {
-        ticker: ticker.trim().toUpperCase(),
-      };
-
-      if (name.trim()) {
-        payload.name = name.trim();
-      }
-
-      if (exchange.trim()) {
-        payload.exchange = exchange.trim().toUpperCase();
-      }
+      setInfo(null);
 
       try {
-        const res = await fetch("/api/stocks", {
+        const res = await fetch(`/api/stocks?ticker=${encodeURIComponent(ticker.trim().toUpperCase())}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
@@ -87,17 +74,17 @@ export default function TickersPage() {
         }
 
         setTicker("");
-        setName("");
-        setExchange("");
-
+        const data = await res.json();
         await loadStocks();
+        setInfo(`Ticker ${ticker.toUpperCase()} added and refresh scheduled (Task ID: ${data.task_id})`);
+        setTicker("");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setPending(false);
       }
     },
-    [exchange, loadStocks, name, ticker]
+    [loadStocks, ticker]
   );
 
   return (
@@ -113,9 +100,9 @@ export default function TickersPage() {
         <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-medium">Add Ticker</h2>
           <form className="mt-4 flex flex-col gap-4" onSubmit={handleSubmit}>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex gap-4">
               <label className="flex flex-col gap-2 text-sm font-medium text-zinc-700">
-                Ticker
+                Ticker Symbol
                 <input
                   className="rounded-lg border border-zinc-300 px-3 py-2 text-base shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200"
                   value={ticker}
@@ -123,28 +110,6 @@ export default function TickersPage() {
                   placeholder="AAPL"
                   maxLength={12}
                   required
-                />
-              </label>
-
-              <label className="flex flex-col gap-2 text-sm font-medium text-zinc-700">
-                Name
-                <input
-                  className="rounded-lg border border-zinc-300 px-3 py-2 text-base shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Apple Inc."
-                  maxLength={255}
-                />
-              </label>
-
-              <label className="flex flex-col gap-2 text-sm font-medium text-zinc-700">
-                Exchange
-                <input
-                  className="rounded-lg border border-zinc-300 px-3 py-2 text-base shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200"
-                  value={exchange}
-                  onChange={(event) => setExchange(event.target.value)}
-                  placeholder="NASDAQ"
-                  maxLength={32}
                 />
               </label>
             </div>
@@ -159,6 +124,8 @@ export default function TickersPage() {
               </button>
               {error ? (
                 <p className="text-sm text-red-600">{error}</p>
+              ) : info ? (
+                <p className="text-sm text-emerald-600">{info}</p>
               ) : (
                 <p className="text-sm text-zinc-500">
                   Ticker codes are uppercased automatically.
@@ -188,6 +155,7 @@ export default function TickersPage() {
                   <th className="px-4 py-2">Ticker</th>
                   <th className="px-4 py-2">Name</th>
                   <th className="px-4 py-2">Exchange</th>
+              <th className="px-4 py-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200">
@@ -214,6 +182,39 @@ export default function TickersPage() {
                       </td>
                       <td className="px-4 py-2 text-zinc-700">
                         {stock.exchange || <span className="text-zinc-400">—</span>}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <button
+                          type="button"
+                          className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-400 hover:text-zinc-800 disabled:cursor-not-allowed disabled:text-zinc-400"
+                          onClick={async () => {
+                            setTriggering(stock.id);
+                            setError(null);
+                            setInfo(null);
+                            try {
+                              const res = await fetch(`/api/stocks/${stock.id}/start`, {
+                                method: "POST",
+                              });
+
+                              if (!res.ok) {
+                                const message = await res
+                                  .json()
+                                  .then((data) => data.detail ?? data.error ?? "Failed to start job")
+                                  .catch(() => "Failed to start job");
+                                throw new Error(message);
+                              }
+
+                              setInfo(`Refresh queued for ${stock.ticker}`);
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : "Unknown error");
+                            } finally {
+                              setTriggering(null);
+                            }
+                          }}
+                          disabled={triggering === stock.id}
+                        >
+                          {triggering === stock.id ? "Scheduling…" : "Start"}
+                        </button>
                       </td>
                     </tr>
                   ))
