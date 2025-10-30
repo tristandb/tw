@@ -24,6 +24,7 @@ services:
     environment:
       PORT: 3000
       NODE_ENV: production
+      INTERNAL_API_URL: http://web:8000
 
   postgres:
     image: postgres:16-alpine
