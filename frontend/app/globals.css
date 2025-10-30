@@ -120,3 +120,82 @@
     @apply bg-background text-foreground;
   }
 }
+
+.rainbow-bubbles {
+  position: absolute;
+  inset: -30vmax;
+  filter: blur(50px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.rainbow-bubble {
+  position: absolute;
+  width: clamp(30vmax, 45vmax, 60vmax);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    hsl(0 100% 65%) 0%,
+    hsl(40 100% 65%) 14%,
+    hsl(90 100% 65%) 28%,
+    hsl(160 100% 65%) 42%,
+    hsl(200 100% 65%) 58%,
+    hsl(260 100% 65%) 72%,
+    hsl(320 100% 65%) 86%,
+    hsl(0 100% 65%) 100%
+  );
+  opacity: 0.32;
+  mix-blend-mode: lighten;
+  animation: bubble-spin var(--duration, 38s) linear infinite,
+    bubble-float var(--float-duration, 28s) ease-in-out infinite;
+}
+
+.bubble-a {
+  top: 10%;
+  left: 18%;
+  --duration: 42s;
+  --float-duration: 32s;
+}
+
+.bubble-b {
+  bottom: 12%;
+  right: 16%;
+  --duration: 55s;
+  --float-duration: 36s;
+}
+
+.bubble-c {
+  top: 35%;
+  right: 5%;
+  --duration: 48s;
+  --float-duration: 26s;
+}
+
+.bubble-d {
+  bottom: 30%;
+  left: 8%;
+  --duration: 60s;
+  --float-duration: 34s;
+}
+
+@keyframes bubble-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bubble-float {
+  0%,
+  100% {
+    transform: translate3d(0, -4%, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, 4%, 0) scale(1.08) rotate(6deg);
+  }
+}
