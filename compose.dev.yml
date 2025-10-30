@@ -1,0 +1,37 @@
+services:
+  web:
+    command: ["fastapi", "dev", "--host", "0.0.0.0", "src/tw/main.py"]
+    environment:
+      FASTAPI_ENV: development
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - .venv/
+            - frontend/node_modules/
+            - frontend/.next/
+            - frontend/
+            - .git/
+        - action: rebuild
+          path: ./uv.lock
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    command: ["pnpm", "exec", "next", "dev", "--hostname", "0.0.0.0", "--port", "3000"]
+    environment:
+      NODE_ENV: development
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend
+          target: /app
+          ignore:
+            - node_modules/
+            - .next/
+        - action: rebuild
+          path: ./frontend/pnpm-lock.yaml
+
